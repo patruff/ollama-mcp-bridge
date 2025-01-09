@@ -1,3 +1,4 @@
+import { ChildProcess, exec as childExec } from 'child_process';
 import { type LLMConfig } from './types';
 import { logger } from './logger';
 import { exec } from 'child_process';
@@ -5,7 +6,7 @@ import { promisify } from 'util';
 import { DynamicToolRegistry } from './tool-registry';
 import { toolSchemas } from './types/tool-schemas';
 
-const execAsync = promisify(exec);
+const execAsync = promisify(childExec);
 
 interface OllamaResponse {
   model: string;
@@ -38,6 +39,9 @@ export class LLMClient {
   public systemPrompt: string | null = null;
   private readonly toolSchemas: typeof toolSchemas = toolSchemas;
   private static REQUEST_TIMEOUT = 300000; // 5 minutes
+
+  // Add this line to define the ollamaProcess property
+  private ollamaProcess: ChildProcess | null = null;
 
   constructor(config: LLMConfig) {
     this.config = config;
@@ -151,63 +155,63 @@ export class LLMClient {
     return formattedMessages;
   }
 
-  async invokeWithPrompt(prompt: string) {
-    logger.debug('Force killing any existing Ollama processes...');
-    await this.forceKillOllama();
+	async invokeWithPrompt(prompt: string) {
+    if (!this.ollamaProcess) {
+        logger.debug('Starting new Ollama instance...');
+        this.ollamaProcess = exec('ollama serve', { windowsHide: true });
 
-    logger.debug('Starting new Ollama instance...');
-    const ollamaProcess = exec('ollama serve', { windowsHide: true });
-    
-    ollamaProcess.stdout?.on('data', (data) => {
-      logger.debug('Ollama stdout:', data.toString());
-    });
-    
-    ollamaProcess.stderr?.on('data', (data) => {
-      logger.debug('Ollama stderr:', data.toString());
-    });
-    
-    ollamaProcess.on('error', (error) => {
-      logger.error('Error starting Ollama:', error);
-    });
-    
-    ollamaProcess.unref();
+        this.ollamaProcess.stdout?.on('data', (data) => {
+            logger.debug('Ollama stdout:', data.toString());
+        });
 
-    let connected = false;
-    for (let i = 0; i < 10; i++) {
-      logger.debug(`Waiting for Ollama to start (attempt ${i + 1}/10)...`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (await this.testConnection()) {
-        logger.debug('Ollama is ready and responding');
-        connected = true;
-        break;
-      }
-    }
-    
-    if (!connected) {
-      throw new Error('Failed to start Ollama after 10 attempts');
+        this.ollamaProcess.stderr?.on('data', (data) => {
+            logger.debug('Ollama stderr:', data.toString());
+        });
+
+        this.ollamaProcess.on('error', (error) => {
+            logger.error('Error starting Ollama:', error);
+        });
+
+        this.ollamaProcess.unref();
+
+        let connected = false;
+        for (let i = 0; i < 10; i++) {
+            logger.debug(`Waiting for Ollama to start (attempt ${i + 1}/10)...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (await this.testConnection()) {
+                logger.debug('Ollama is ready and responding');
+                connected = true;
+                break;
+            }
+        }
+
+        if (!connected) {
+            throw new Error('Failed to start Ollama after 10 attempts');
+        }
+    } else {
+        logger.debug('Reusing existing Ollama instance...');
     }
 
     // Detect tool using registry if available
     if (this.toolRegistry) {
-      this.currentTool = this.toolRegistry.detectToolFromPrompt(prompt);
-      logger.debug(`Detected tool from registry: ${this.currentTool}`);
+        this.currentTool = this.toolRegistry.detectToolFromPrompt(prompt);
+        logger.debug(`Detected tool from registry: ${this.currentTool}`);
     }
 
     logger.debug(`Preparing to send prompt: ${prompt}`);
     this.messages = [];
     this.messages.push({
-      role: 'user',
-      content: prompt
+        role: 'user',
+        content: prompt
     });
 
     return this.invoke([]);
-  }
+}
 
   async invoke(toolResults: any[] = []) {
     try {
       if (toolResults.length > 0) {
         for (const result of toolResults) {
-          // Convert MCP response to proper Ollama tool call format
           const toolOutput = result.output;
           try {
             const parsedOutput = JSON.parse(toolOutput);
@@ -243,13 +247,29 @@ export class LLMClient {
       const messages = this.prepareMessages();
       const payload: any = {
         model: this.config.model,
-        messages,
+        messages: [],  // Start with an empty array for structured messages
         stream: false,
         options: {
           temperature: this.config.temperature || 0,
           num_predict: this.config.maxTokens || 1000
         }
       };
+
+      // Add the messages
+      for (const message of messages) {
+        if (message.role === 'tool') {
+          payload.messages.push({
+            role: message.role,
+            content: message.content,
+            tool_call_id: message.tool_call_id
+          });
+        } else {
+          payload.messages.push({
+            role: message.role,
+            content: message.content
+          });
+        }
+      }
 
       // Add structured output format if a tool is detected
       if (this.currentTool) {
@@ -276,7 +296,7 @@ export class LLMClient {
       }
 
       logger.debug('Preparing Ollama request with payload:', JSON.stringify(payload, null, 2));
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
@@ -315,10 +335,12 @@ export class LLMClient {
 
       // Parse the structured response
       try {
-        // Handle both string and object responses
+        if (typeof content === 'string' && content.startsWith('```json')) {
+          content = content.replace(/^```json/, '').replace(/```$/, '').trim();
+          logger.debug('Cleaned Markdown response:', content);
+        }
         const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
         
-        // Check if response matches our structured format
         if (contentObj.name && contentObj.arguments) {
           isToolCall = true;
           toolCalls = [{

@@ -1,0 +1,59 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "/usr/bin/node",
+      "args": [
+        "/usr/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+        "/home/fq2103/mcp_workspace"
+      ]
+    },
+    "memory": {
+      "command": "/usr/bin/node",
+      "args": [
+        "/usr/lib/node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+      ]
+    },
+    "brave-search": {
+      "command": "/usr/bin/node",
+      "args": [
+        "/usr/lib/node_modules/@modelcontextprotocol/server-brave-search/dist/index.js"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
+    "github": {
+      "command": "/usr/bin/node",
+      "args": [
+        "/usr/lib/node_modules/@modelcontextprotocol/server-github/dist/index.js"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    }
+#		,
+#    "flux": {
+#      "command": "/usr/bin/node",
+#      "args": [
+#        "/usr/lib/node_modules/@patruff/server-flux/dist/index.js"
+#      ],
+#      "env": {
+#        "REPLICATE_API_TOKEN": "${REPLICATE_API_TOKEN}"
+#      }
+#    },
+#    "gmail-drive": {
+#      "command": "/usr/bin/node",
+#      "args": [
+#        "/usr/lib/node_modules/@patruff/server-gmail-drive/dist/index.js"
+#      ]
+#    }
+  },
+  "llm": {
+    "model": "qwen2.5-coder:7b-instruct",
+    "baseUrl": "http://localhost:11434",
+    "apiKey": "ollama",
+    "temperature": 0.0,
+    "maxTokens": 1000
+  },
+  "systemPrompt": "You are a helpful assistant that can use various tools to help answer questions. You have access to multiple MCPs including filesystem operations, GitHub interactions, Brave search, Gmail, Google Drive, and Flux for image generation. When using these tools, make sure to respect their specific requirements and limitations."
+}

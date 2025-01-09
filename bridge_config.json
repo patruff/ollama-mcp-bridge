@@ -1,54 +1,15 @@
 {
   "mcpServers": {
     "filesystem": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "command": "/usr/bin/node",
       "args": [
-        "C:\\Users\\patru\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-filesystem\\dist\\index.js",
-        "C:\\Users\\patru\\anthropicFun"
+        "/usr/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+        "/home/fq2103/mcp_workspace"
       ]
-    },
-    "memory": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\patru\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-memory\\dist\\index.js"
-      ]
-    },
-    "brave-search": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\patru\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-brave-search\\dist\\index.js"
-      ],
-      "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      }
-    },
-    "github": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\patru\\AppData\\Roaming\\npm\\node_modules\\@modelcontextprotocol\\server-github\\dist\\index.js"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-      }
-    },
-    "flux": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\patru\\AppData\\Roaming\\npm\\node_modules\\@patruff\\server-flux\\dist\\index.js"
-      ],
-      "env": {
-        "REPLICATE_API_TOKEN": "${REPLICATE_API_TOKEN}"
-      }
-    },
-    "gmail-drive": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\patru\\AppData\\Roaming\\npm\\node_modules\\@patruff\\server-gmail-drive\\dist\\index.js"
-      ]
-    }
+  }
   },
   "llm": {
-    "model": "huihui_ai/qwen2.5-coder-abliterate",
+    "model": "deepseek-v2:16b",
     "baseUrl": "http://localhost:11434",
     "apiKey": "ollama",
     "temperature": 0.7,

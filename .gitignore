@@ -1,19 +1,2 @@
-# .env files
-.env
-.env.local
-.env.*.local
-
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Dependencies
-node_modules/
-venv/
-__pycache__/
-*.pyc
-
-# Logs
-*.log
+*patch
+tmp0
