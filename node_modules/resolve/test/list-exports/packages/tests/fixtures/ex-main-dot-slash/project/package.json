@@ -1,6 +1,0 @@
-{
-	"bundleDependencies": true,
-	"name": "ex-main-dot-slash",
-	"version": "0.0.0",
-	"main": "./"
-}
