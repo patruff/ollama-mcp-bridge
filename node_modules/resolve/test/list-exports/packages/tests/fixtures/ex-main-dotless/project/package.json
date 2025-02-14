@@ -1,6 +1,0 @@
-{
-	"bundleDependencies": true,
-	"name": "ex-main-dotless",
-	"version": "0.0.0",
-	"main": "index.js"
-}
