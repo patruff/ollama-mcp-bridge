@@ -18,6 +18,7 @@ export interface BridgeConfigFile {
   systemPrompt?: string;
 }
 
+// TODO: this doesn't work for macOS and needs to be fixed
 const DEFAULT_CONFIG: BridgeConfigFile = {
   mcpServers: {
     filesystem: {
@@ -45,7 +46,8 @@ export async function loadBridgeConfig(): Promise<BridgeConfigFile> {
   // Change to look for config in the project directory
   const projectDir = path.resolve(__dirname, '..');
   const configPath = path.join(projectDir, 'bridge_config.json');
-  
+  logger.info(`Looking for bridge configuration at ${configPath}`);
+
   try {
     const configData = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(configData);
@@ -64,6 +66,7 @@ export async function loadBridgeConfig(): Promise<BridgeConfigFile> {
       }
     };
   } catch (error: any) {
+    logger.warn(`Error loading config: ${error.message}`);            // added this so you'll get a specific error if JSON parsing fails
     logger.warn(`Could not load bridge_config.json from ${configPath}, using defaults`);
     return DEFAULT_CONFIG;
   }

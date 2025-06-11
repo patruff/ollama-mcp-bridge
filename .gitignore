@@ -1,2 +1,12 @@
 *patch
 tmp0
+**node_modules/*
+
+# Ignore build artifacts
+dist/
+
+# Ignore macOS system files
+.DS_Store
+
+# ignore the bridge_config.json file
+bridge_config.json

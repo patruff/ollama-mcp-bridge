@@ -5,7 +5,7 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 const OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
-const MODEL_NAME = 'qwen2.5-coder:7b-instruct';
+const MODEL_NAME = 'phi4-mini-reasoning:latest';
 const TEST_TIMEOUT = 300000; // 5 minutes
 const HOOK_TIMEOUT = 30000;  // 30 seconds for hooks
 const REQUEST_TIMEOUT = 180000; // 3 minutes per request

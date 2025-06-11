@@ -16,6 +16,7 @@ async function question(prompt: string): Promise<string> {
   });
 }
 
+// TODO: this won't work on macOS
 async function forceExit() {
   logger.info('Force exiting...');
   

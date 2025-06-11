@@ -16,6 +16,8 @@
     "reset-ollama": "ts-node src/ollama-manager.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/server-brave-search": "^0.6.2",
+    "@modelcontextprotocol/server-filesystem": "^2025.3.28",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.3",
     "openai": "^4.0.0",

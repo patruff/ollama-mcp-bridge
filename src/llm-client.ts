@@ -39,9 +39,10 @@ export class LLMClient {
   public systemPrompt: string | null = null;
   private readonly toolSchemas: typeof toolSchemas = toolSchemas;
   private static REQUEST_TIMEOUT = 300000; // 5 minutes
-
-  // Add this line to define the ollamaProcess property
   private ollamaProcess: ChildProcess | null = null;
+
+  // Add the format property
+  public format: any = null;
 
   constructor(config: LLMConfig) {
     this.config = config;
@@ -282,38 +283,20 @@ export class LLMClient {
         }
       }
 
-      // Add structured output format if a tool is detected
-      if (this.currentTool) {
+      // Add structured output format if a tool is detected OR if format is explicitly set
+      if (this.format) {
+        // Use explicitly set format
+        payload.format = "json";
+        payload.options = payload.options || {};
+      } else if (this.currentTool) {
         const toolSchema = this.currentTool
           ? this.toolSchemas[this.currentTool as keyof typeof toolSchemas]
           : null;
         if (toolSchema) {
           // Convert the JSON schema to a string
-          payload.format = "json"; // Just set it to "json" instead of an object
-
+          payload.format = "json";
           // Add the schema as a separate property
           payload.options = payload.options || {};
-          payload.options.schema = {
-            type: "object",
-            properties: {
-              name: {
-                type: "string",
-                const: this.currentTool,
-              },
-              arguments: toolSchema,
-              thoughts: {
-                type: "string",
-                description: "Your thoughts about using this tool",
-              },
-            },
-            required: ["name", "arguments", "thoughts"],
-          };
-
-          logger.debug('Set format to "json" for tool:', this.currentTool);
-          logger.debug(
-            "Schema:",
-            JSON.stringify(payload.options.schema, null, 2),
-          );
         }
       }
 

@@ -13,6 +13,7 @@ export class MCPClient {
   private serverCapabilities?: any;
   private serverVersion?: any;
   private availableTools: Set<string> = new Set();
+  private responseBuffer: string = '';  // Add buffer for partial messages
 
   constructor(private serverParams: ServerParameters) {}
 
@@ -64,7 +65,6 @@ export class MCPClient {
 
       if (this.stdout) {
         this.stdout.on('data', (data: Buffer) => {
-          logger.debug(`[MCP Client] Received raw data: ${data.toString().trim()}`);
           this.handleResponse(data);
         });
       }
@@ -144,27 +144,40 @@ export class MCPClient {
   }
 
   private handleResponse(data: Buffer) {
-    const messages = data.toString().split('\n').filter(line => line.trim());
+    // Append new data to the buffer
+    this.responseBuffer += data.toString();
     
-    for (const message of messages) {
-      try {
-        const response = JSON.parse(message);
-        logger.debug(`[MCP Client] Parsed message: ${JSON.stringify(response)}`);
-        
-        const pendingMessage = this.messageQueue.find(m => m.message.id === response.id);
-        if (pendingMessage) {
-          if (response.error) {
-            logger.error(`[MCP Client] Message error: ${response.error.message}`);
-            pendingMessage.reject(new Error(response.error.message));
-          } else {
-            logger.debug(`[MCP Client] Message success: ${JSON.stringify(response.result)}`);
-            pendingMessage.resolve(response.result);
-          }
-          this.messageQueue = this.messageQueue.filter(m => m.message.id !== response.id);
-        }
-      } catch (error: any) {
-        logger.error(`[MCP Client] Failed to parse response: ${error?.message || String(error)}`);
+    // Process complete messages (separated by newlines)
+    let newlineIndex;
+    while ((newlineIndex = this.responseBuffer.indexOf('\n')) !== -1) {
+      const messageLine = this.responseBuffer.slice(0, newlineIndex).trim();
+      this.responseBuffer = this.responseBuffer.slice(newlineIndex + 1);
+      
+      if (messageLine) {
+        this.processMessage(messageLine);
       }
+    }
+  }
+
+  private processMessage(messageLine: string) {
+    try {
+      const response = JSON.parse(messageLine);
+      logger.debug(`[MCP Client] Parsed message: ${JSON.stringify(response, null, 2).slice(0, 500)}${JSON.stringify(response).length > 500 ? '...' : ''}`);
+      
+      const pendingMessage = this.messageQueue.find(m => m.message.id === response.id);
+      if (pendingMessage) {
+        if (response.error) {
+          logger.error(`[MCP Client] Message error: ${response.error.message}`);
+          pendingMessage.reject(new Error(response.error.message));
+        } else {
+          logger.debug(`[MCP Client] Message success - response size: ${JSON.stringify(response.result).length} bytes`);
+          pendingMessage.resolve(response.result);
+        }
+        this.messageQueue = this.messageQueue.filter(m => m.message.id !== response.id);
+      }
+    } catch (error: any) {
+      logger.error(`[MCP Client] Failed to parse response: ${error?.message || String(error)}`);
+      logger.error(`[MCP Client] Problematic message: ${messageLine.slice(0, 200)}${messageLine.length > 200 ? '...' : ''}`);
     }
   }
 
@@ -175,16 +188,36 @@ export class MCPClient {
         return;
       }
 
+      // Set a timeout for large responses (30 seconds)
+      const timeout = setTimeout(() => {
+        const index = this.messageQueue.findIndex(m => m.message.id === message.id);
+        if (index !== -1) {
+          this.messageQueue.splice(index, 1);
+          reject(new Error(`[MCP Client] Message timeout after 30 seconds for message id: ${message.id}`));
+        }
+      }, 30000);
+
       // Only add to message queue if it's a request (has an id)
       if (message.id !== undefined) {
-        this.messageQueue.push({ resolve, reject, message });
+        this.messageQueue.push({ 
+          resolve: (result: any) => {
+            clearTimeout(timeout);
+            resolve(result);
+          }, 
+          reject: (error: any) => {
+            clearTimeout(timeout);
+            reject(error);
+          }, 
+          message 
+        });
       }
       
       const messageStr = JSON.stringify(message) + '\n';
-      logger.debug(`[MCP Client] Sending message: ${messageStr.trim()}`);
+      logger.debug(`[MCP Client] Sending message (${messageStr.length} bytes): ${messageStr.trim().slice(0, 200)}${messageStr.length > 200 ? '...' : ''}`);
       
       this.stdin.write(messageStr, (error) => {
         if (error) {
+          clearTimeout(timeout);
           logger.error(`[MCP Client] Failed to send message: ${error.message}`);
           reject(error);
           return;
@@ -192,6 +225,7 @@ export class MCPClient {
         
         // If it's a notification (no id), resolve immediately
         if (message.id === undefined) {
+          clearTimeout(timeout);
           resolve(undefined);
         }
       });
@@ -267,6 +301,7 @@ export class MCPClient {
     this.stdout = null;
     this.initialized = false;
     this.availableTools.clear();
+    this.responseBuffer = '';  // Clear the buffer
     
     logger.debug("[MCP Client] Connection closed");
   }
