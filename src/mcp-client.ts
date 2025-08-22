@@ -18,7 +18,7 @@ export class MCPClient {
 
   async connect(): Promise<void> {
     logger.debug("[MCP Client] Starting connection...");
-    
+
     try {
       const spawnOptions: any = {
         stdio: ['pipe', 'pipe', 'pipe']
@@ -38,7 +38,7 @@ export class MCPClient {
       }
 
       logger.debug(`[MCP Client] Spawning process: ${this.serverParams.command} ${this.serverParams.args?.join(' ')}`);
-      
+
       this.process = spawn(
         this.serverParams.command,
         this.serverParams.args || [],
@@ -62,10 +62,21 @@ export class MCPClient {
         logger.info(`[MCP Client] Process exited with code ${code}`);
       });
 
+
+      let stdoutBuffer = '';
       if (this.stdout) {
         this.stdout.on('data', (data: Buffer) => {
-          logger.debug(`[MCP Client] Received raw data: ${data.toString().trim()}`);
-          this.handleResponse(data);
+          const chunk = data.toString();
+          logger.debug(`[MCP Client] Received raw data: ${chunk.trim()}`);
+          stdoutBuffer += chunk;
+          let newlineIndex;
+          while ((newlineIndex = stdoutBuffer.indexOf('\n')) !== -1) {
+            const message = stdoutBuffer.slice(0, newlineIndex);
+            stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+            if (message.trim()) {
+              this.handleResponse(Buffer.from(message));
+            }
+          }
         });
       }
 
@@ -96,7 +107,7 @@ export class MCPClient {
       name: "MCPLLMBridge",
       version: "1.0.0"
     };
-    
+
     const initMessage = {
       jsonrpc: "2.0",
       method: "initialize",
@@ -110,7 +121,7 @@ export class MCPClient {
 
     try {
       const response = await this.sendMessage(initMessage);
-      
+
       if (!response || typeof response.protocolVersion !== 'string') {
         throw new Error('[MCP Client] Invalid initialization response from server');
       }
@@ -145,12 +156,12 @@ export class MCPClient {
 
   private handleResponse(data: Buffer) {
     const messages = data.toString().split('\n').filter(line => line.trim());
-    
+
     for (const message of messages) {
       try {
         const response = JSON.parse(message);
         logger.debug(`[MCP Client] Parsed message: ${JSON.stringify(response)}`);
-        
+
         const pendingMessage = this.messageQueue.find(m => m.message.id === response.id);
         if (pendingMessage) {
           if (response.error) {
@@ -179,17 +190,17 @@ export class MCPClient {
       if (message.id !== undefined) {
         this.messageQueue.push({ resolve, reject, message });
       }
-      
+
       const messageStr = JSON.stringify(message) + '\n';
       logger.debug(`[MCP Client] Sending message: ${messageStr.trim()}`);
-      
+
       this.stdin.write(messageStr, (error) => {
         if (error) {
           logger.error(`[MCP Client] Failed to send message: ${error.message}`);
           reject(error);
           return;
         }
-        
+
         // If it's a notification (no id), resolve immediately
         if (message.id === undefined) {
           resolve(undefined);
@@ -204,7 +215,7 @@ export class MCPClient {
     }
 
     logger.debug("[MCP Client] Requesting available tools");
-    
+
     try {
       const message = {
         jsonrpc: "2.0",
@@ -228,7 +239,7 @@ export class MCPClient {
     }
 
     logger.debug(`[MCP Client] Calling tool '${toolName}' with args: ${JSON.stringify(toolArgs)}`);
-    
+
     // Check if the tool exists
     if (!this.availableTools.has(toolName)) {
       logger.error(`[MCP Client] Unknown tool '${toolName}'. Available tools: ${Array.from(this.availableTools).join(', ')}`);
@@ -257,17 +268,17 @@ export class MCPClient {
 
   async close(): Promise<void> {
     logger.debug("[MCP Client] Closing connection...");
-    
+
     if (this.process) {
       this.process.kill();
       this.process = null;
     }
-    
+
     this.stdin = null;
     this.stdout = null;
     this.initialized = false;
     this.availableTools.clear();
-    
+
     logger.debug("[MCP Client] Connection closed");
   }
 }
