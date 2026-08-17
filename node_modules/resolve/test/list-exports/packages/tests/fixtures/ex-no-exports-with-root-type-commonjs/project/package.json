@@ -1,7 +1,0 @@
-{
-	"bundleDependencies": true,
-	"name": "ex-no-exports-with-root-type-commonjs",
-	"version": "0.0.0",
-	"main": "./index.js",
-	"type": "commonjs"
-}

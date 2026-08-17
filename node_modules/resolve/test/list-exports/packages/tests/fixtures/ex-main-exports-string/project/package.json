@@ -1,7 +1,0 @@
-{
-	"bundleDependencies": true,
-	"name": "ex-main-exports-string",
-	"version": "0.0.0",
-	"main": "./dir",
-	"exports": "./index.js"
-}

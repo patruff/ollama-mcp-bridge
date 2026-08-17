@@ -12,20 +12,6 @@ export async function testOllamaConnection(config: LLMConfig): Promise<boolean> 
     logger.info('Testing basic connectivity to Ollama...');
     logger.info(`Attempting to connect to ${config.baseUrl} with model ${config.model}`);
     
-    const format = {
-      type: "object",
-      properties: {
-        response: {
-          type: "string",
-          enum: ["connected"]
-        }
-      },
-      required: ["response"]
-    };
-
-    // Override the format for the test
-    testClient.format = format;
-    
     const response = await testClient.invokeWithPrompt(testPrompt);
     
     if (!response || !response.content) {
